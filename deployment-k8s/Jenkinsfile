@@ -1,0 +1,118 @@
+def label = "devops-${UUID.randomUUID().toString()}"
+
+def notifySlack(STATUS, COLOR) {
+	// slackSend (color: COLOR, message: STATUS+" : " +  "${env.JOB_NAME} [${env.BUILD_NUMBER}] (${env.BUILD_URL})")
+}
+
+def notifyMail(STATUS, RECIPIENTS) {
+	// emailext body: STATUS+" : " +  "${env.JOB_NAME} [${env.BUILD_NUMBER}] (${env.BUILD_URL})",
+	// subject: STATUS + " : " + "${env.JOB_NAME} [${env.BUILD_NUMBER}]",
+	// from: "happycloudpak@gmail.com",
+	// to: RECIPIENTS
+}
+
+def email_recipients="initial1977@gmail.com, initial3@naver.com"
+
+// notifySlack("STARTED", "#FFFF00")
+//notifyMail("STARTED", "${email_recipients}")
+
+podTemplate(
+	label: label, 
+	containers: [
+		//container image docker search 
+		containerTemplate(name: "docker", image: "docker:stable", ttyEnabled: true, command: "cat"),
+		containerTemplate(name: "kubectl", image: "lachlanevenson/k8s-kubectl", command: "cat", ttyEnabled: true),
+		containerTemplate(name: "scanner", image: "emeraldsquad/sonar-scanner", ttyEnabled: true, command: "cat")
+	],
+	//volume mount
+	volumes: [
+		hostPathVolume(hostPath: "/var/run/docker.sock", mountPath: "/var/run/docker.sock")
+	]
+) 
+{
+	node(label) {
+		stage("Get Source") {
+			git "https://gitlab.com/jenkins28/mvp-jenkins-nodejs-sample.git"
+			// git url: "https://gitlab.com/jenkins28/mvp-jenkins-nodejs-sample.git", 
+			// 	branch: "hava_v3", 
+			// 	credentialsId: "happycloudpak"
+
+		}
+
+		//-- 환경변수 선
+		def props = readProperties  file:"deployment-k8s/pipeline.properties"
+		def tag = props["version"]
+		def dockerRegistry = props["dockerRegistry"]
+		def credential_registry=props["credential_registry"]
+		def image = props["image"]
+		def deployment = props["deployment"]
+		def service = props["service"]
+		def ingress = props["ingress"]
+		def selector_key = props["selector_key"]
+		def selector_val = props["selector_val"]
+		def namespace = props["namespace"]
+		def appname = props["appname"]
+		def containername = props["containername"]	
+		def icpProxyIP = props["icpProxyIP"] // url address
+		
+	
+		
+		// tag를 재정의 함. 이미지 버전이 달라야 배포시 컨테이너에서 인식
+		def timeStamp = System.currentTimeMillis()
+		echo "TimeStamp: ${timeStamp}"
+		echo "Tag : ${tag}"
+		tag = tag+"-"+timeStamp
+		echo "New Tag : ${tag}"	
+
+		try {
+			// stage("Inspection Code") {
+			// 	container("scanner") {
+			// 		sh "sonar-scanner \
+			// 			-Dsonar.projectName=jenkins_nodejs \
+			// 			-Dsonar.projectKey=jenkins_nodejs \
+			// 			-Dsonar.sources=. \
+			// 			-Dsonar.host.url=http://169.56.80.70:31420 \
+			// 			-Dsonar.login=d19d2fe58a9743ad2edc8c5b49f766ae19d96e17"      
+			// 	}
+			// }			
+			
+			stage("Build Microservice image") {
+				container("docker") {
+					docker.withRegistry("${dockerRegistry}", "${credential_registry}") {
+						sh "docker build -f ./deployment-k8s/Dockerfile -t ${image}:${tag} ."
+						sh "docker push ${image}:${tag}"
+						sh "docker tag ${image}:${tag} ${image}:latest"
+						sh "docker push ${image}:latest"
+					}
+				}
+			}
+			
+			// stage("Image Vulnerability Scanning") {
+			// 	container("docker"){
+			// 		aquaMicroscanner imageName: "${image}:latest", notCompliesCmd: "", onDisallowed: "ignore", outputFormat: "html"
+			// 	}
+			// }
+			
+			stage( "Clean Up Existing Deployments" ) {
+				container("kubectl") {
+					sh "kubectl delete deployments -n ${namespace} --selector=${selector_key}=${selector_val}"
+				}
+			}
+
+			stage( "Deploy to Cluster" ) {
+				container("kubectl") {
+					sh "kubectl apply -n ${namespace} -f ${deployment}"
+					sh "kubectl set image deployment ${appname} ${containername}=${image}:${tag} -n ${namespace}"
+				}
+			}
+			
+			notifySlack("${currentBuild.currentResult}", "#00FF00")
+			
+			echo "**** FINISH ALL STAGES : SUCESS"
+			echo " swagger URL : ${appname}.${icpProxyIP}/sample.html"
+			
+		} catch(e) {
+			currentBuild.result = "FAILED"
+		}
+	}
+}
