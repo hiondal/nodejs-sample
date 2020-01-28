@@ -32,7 +32,7 @@ podTemplate(
 {
 	node(label) {
 		stage("Get Source") {
-			git "https://gitlab.com/jenkins28/mvp-jenkins-nodejs-sample.git"
+			git "https://gitlab.com/jenkins28/cicd-nodejs-sample.git"
 			// git url: "https://gitlab.com/jenkins28/mvp-jenkins-nodejs-sample.git", 
 			// 	branch: "hava_v3", 
 			// 	credentialsId: "happycloudpak"
