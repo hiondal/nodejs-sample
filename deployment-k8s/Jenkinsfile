@@ -109,7 +109,7 @@ podTemplate(
 			notifySlack("${currentBuild.currentResult}", "#00FF00")
 			
 			echo "**** FINISH ALL STAGES : SUCESS"
-			echo " swagger URL : ${appname}.${icpProxyIP}/sample.html"
+			echo " swagger URL : ${appname}.${icpProxyIP}"
 			
 		} catch(e) {
 			currentBuild.result = "FAILED"
