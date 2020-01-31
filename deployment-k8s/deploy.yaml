@@ -16,7 +16,7 @@ spec:
         appname: cicdsample-front
     spec:
       containers:
-        - name: cicdsample-front=
+        - name: cicdsample-front
           image: happycloudpak/cicdsample-front
           imagePullPolicy: Always
           env:
