@@ -1,0 +1,26 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: tr-s2i-nodejs
+spec:
+  inputs:
+    params:
+      - name: TLSVERIFY
+        value: 'false'
+    resources:
+      - name: source
+        resourceRef:
+          name: pr-git-nodejs-sample
+  outputs:
+    resources:
+      - name: image
+        paths:
+          - build/image
+        resourceRef:
+          name: pr-image-nodejs-sample
+  serviceAccountName: pipeline
+  taskRef:
+    kind: Task
+    name: s2i-nodejs
+  timeout: 1h0m0s
+

@@ -1,0 +1,19 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: nodejs-sample
+spec:
+  params:
+    - name: IMAGE_NAME
+      value: nodejs-sample
+  pipelineRef:
+    name: nodejs-sample
+  resources:
+    - name: app-source
+      resourceRef:
+        name: pr-git-nodejs-sample
+    - name: app-image
+      resourceRef:
+        name: pr-image-nodejs-sample
+  serviceAccountName: pipeline
+  timeout: 1h0m0s

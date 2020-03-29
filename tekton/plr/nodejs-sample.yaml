@@ -1,0 +1,47 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: nodejs-sample
+spec:
+  params:
+    - name: IMAGE_NAME
+      type: string
+  resources:
+    - name: app-source
+      type: git
+    - name: app-image
+      type: image
+  tasks:
+    - name: build
+      params:
+      - name: TLSVERIFY
+        value: 'false'
+      resources:
+        inputs:
+          - name: source
+            resource: app-source
+        outputs:
+          - name: image
+            resource: app-image
+      taskRef:
+        kind: Task
+        name: s2i-nodejs
+
+    - name: deploy
+      params:
+        - name: ARGS
+          value:
+            - new-app
+            - $(params.IMAGE_NAME)
+            - -e
+            - PORT=8080
+        - name: DC_NAME
+          value: nodejs-sample
+        - name: SVC_NAME
+          value: nodejs-sample
+      runAfter:
+        - build
+      taskRef:
+        kind: Task
+        name: deploy-service
+ 

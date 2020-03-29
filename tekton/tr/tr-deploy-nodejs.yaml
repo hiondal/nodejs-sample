@@ -1,0 +1,23 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: tr-deploy-nodejs
+spec:
+  inputs:
+    params:
+      - name: ARGS
+        value:
+          - new-app
+          #- '--docker-image'
+          - nodejs-sample
+          - -e
+          - PORT=8080
+      - name: DC_NAME
+        value: nodejs-sample
+      - name: SVC_NAME
+        value: nodejs-sample
+  serviceAccountName: pipeline
+  taskRef:
+    kind: Task
+    name: deploy-service
+  timeout: 1h0m0s
